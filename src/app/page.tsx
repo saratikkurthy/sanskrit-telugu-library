@@ -10,7 +10,6 @@ import ScanButton from "@/components/ScanButton";
 import { getLastScanned } from "@/app/actions/library";
 import LibraryMenu from "@/components/LibraryMenu";
 
-
 function getShardPath(filename: string) {
   const hash = crypto.createHash('md5').update(filename).digest('hex');
   return path.join(hash.substring(0, 2), hash.substring(2, 4));

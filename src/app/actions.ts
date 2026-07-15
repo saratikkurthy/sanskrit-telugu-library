@@ -11,7 +11,6 @@ export async function createCategory(name: string) {
   revalidatePath('/');
 }
 
-// THIS WAS THE MISSING EXPORT
 export async function assignCategoryAction(fileId: number, categoryId: number | null) {
   await db.update(library_files)
     .set({ category_id: categoryId })
@@ -20,15 +19,21 @@ export async function assignCategoryAction(fileId: number, categoryId: number | 
 }
 
 export async function bulkAssignCategory(formData: FormData) {
-  const categoryId = formData.get("categoryId");
+  const categoryIdStr = formData.get("categoryId") as string;
   const fileIds = formData.getAll("fileIds").map(id => parseInt(id as string));
 
-  if (categoryId && fileIds.length > 0) {
+  if (fileIds.length > 0) {
+    const categoryId = categoryIdStr === "" ? null : parseInt(categoryIdStr);
     await db.update(library_files)
-      .set({ category_id: parseInt(categoryId as string) })
+      .set({ category_id: categoryId })
       .where(inArray(library_files.id, fileIds));
   }
   revalidatePath('/');
+}
+
+export async function deleteFileAction(fileId: number) {
+  await db.delete(library_files).where(eq(library_files.id, fileId));
+  revalidatePath('/library/duplicates');
 }
 
 export async function toggleFavoriteAction(fileId: number, categoryId: number | null) {
@@ -50,7 +55,6 @@ export async function toggleFavoriteAction(fileId: number, categoryId: number | 
         category_id: categoryId,
       });
     }
-
     revalidatePath('/');
   } catch (error) {
     console.error("Failed to toggle favorite:", error);

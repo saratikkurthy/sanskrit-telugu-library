@@ -6,6 +6,9 @@ export default function LibraryMenu() {
       <Link href="/library/recent-added">Recently Added</Link>
       <Link href="/library/recent-reads">Recent Reads</Link>
       <Link href="/library/most-visited">Most Visited</Link>
+      <Link href="/library/duplicates" style={{ color: 'red', fontWeight: 'bold' }}>
+        View Duplicates
+      </Link>
     </nav>
   );
 }

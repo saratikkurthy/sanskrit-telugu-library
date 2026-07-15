@@ -1,50 +1,45 @@
 "use client";
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 
 interface Category { id: number; name: string; }
 interface SidebarProps {
     categories: Category[];
-    onAddCategory: () => void;
+    // Update the prop signature to accept a string
+    onAddCategory: (name: string) => Promise<void>;
 }
 
 export default function Sidebar({ categories, onAddCategory }: SidebarProps) {
-    const pathname = usePathname();
+    const [newName, setNewName] = useState("");
+
+    const handleAdd = async () => {
+        if (!newName.trim()) return;
+        await onAddCategory(newName);
+        setNewName(""); // Clear input after success
+    };
 
     return (
         <nav style={{ width: '250px', padding: '1rem', borderRight: '1px solid #ccc' }}>
             <h2 style={{ marginBottom: '1.5rem' }}>My Library</h2>
-
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-                <li><Link href="/">🏠 Home</Link></li>
-                <li><Link href="/library/recent-added">Recently Added</Link></li>
-                <li><Link href="/library/recent-reads">Recent Reads</Link></li>
-                <li><Link href="/library/most-visited">Most Visited</Link></li>
-                <li><Link href="/dashboard">Dashboard</Link></li>
-                <li><Link href="/settings">Settings</Link></li>
-            </ul>
-
-            <hr />
-
+            {/* ... (Your existing list code) ... */}
+            
             <h3>Categories</h3>
             <ul style={{ listStyle: 'none', padding: 0 }}>
                 <li><Link href="/">All PDFs</Link></li>
                 {categories.map((cat) => (
                     <li key={cat.id}>
-                        {/* THIS IS THE KEY CHANGE: 
-                We point to the root ("/") and pass the categoryId parameter.
-                Your page.tsx will automatically pick this up and filter the list.
-            */}
-                        <Link href={`/?categoryId=${cat.id}`}>
-                            {cat.name}
-                        </Link>
+                        <Link href={`/?categoryId=${cat.id}`}>{cat.name}</Link>
                     </li>
                 ))}
             </ul>
 
             <div style={{ marginTop: '1rem' }}>
-                <input placeholder="Add new category..." />
-                <button onClick={onAddCategory}>Add</button>
+                <input 
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Add new category..." 
+                />
+                <button onClick={handleAdd}>Add</button>
             </div>
         </nav>
     );

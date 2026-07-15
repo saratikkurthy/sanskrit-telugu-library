@@ -1,14 +1,14 @@
 import { db } from "@/db";
-import { library_files, favorites, categories, file_activity } from "@/db/schema";
+import { library_files, favorites, categories } from "@/db/schema";
 import { like, count, eq, and, asc, desc } from "drizzle-orm";
 import crypto from 'crypto';
 import path from 'path';
 import Link from 'next/link';
 import FavoriteButton from "@/components/FavoriteButton";
-import CategorySidebar from "@/components/CategorySidebar";
 import ScanButton from "@/components/ScanButton";
 import { getLastScanned } from "@/app/actions/library";
 import LibraryMenu from "@/components/LibraryMenu";
+import { bulkAssignCategory } from "@/app/actions";
 
 function getShardPath(filename: string) {
   const hash = crypto.createHash('md5').update(filename).digest('hex');
@@ -23,7 +23,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   const catId = categoryId ? parseInt(categoryId) : null;
   const lastScanned = await getLastScanned();
 
-  // --- 1. PREPARE FILTERS ---
   const filters = [];
   if (q) filters.push(like(library_files.file_name, `%${q}%`));
   if (catId) filters.push(eq(library_files.category_id, catId));
@@ -39,43 +38,30 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
     default: orderByClause = asc(library_files.file_name); break;
   }
 
-  // --- 2. FETCH DATA IN PARALLEL ---
-  const [totalResults, results, userFavorites, allCategories, mostVisited, recentFiles] = await Promise.all([
+  const [totalResults, results, userFavorites, allCategories] = await Promise.all([
     db.select({ count: count() }).from(library_files).where(whereClause).get(),
     db.select().from(library_files).where(whereClause).orderBy(orderByClause).limit(currentLimit).offset(offset),
     db.select().from(favorites),
     db.select().from(categories),
-    // Most Visited (using view_count column)
-    db.select({ file_name: library_files.file_name, count: library_files.view_count })
-      .from(library_files).orderBy(desc(library_files.view_count)).limit(5),
-    // Recent Reads (using last_accessed column)
-    db.select().from(library_files).orderBy(desc(library_files.last_accessed)).limit(5)
   ]);
 
   const totalPages = Math.ceil((totalResults?.count || 0) / currentLimit);
 
-  // --- 3. RENDER ---
   return (
     <main style={{ display: 'flex', minHeight: '100vh' }}>
-      {/*<CategorySidebar categories={allCategories} />*/}
       <div style={{ flex: 1, padding: "2rem" }}>
-
-        {/* Stats Section */}
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <h1>Library</h1>
-           <LibraryMenu />
+          <LibraryMenu />
         </div>
-       
+        
         <div style={{ textAlign: 'right' }}>
           <ScanButton />
           <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.5rem' }}>
-            {/* Format the date to be human-readable */}
             Last scanned: {lastScanned ? lastScanned.toLocaleString() : "Never"}
           </p>
         </div>
 
-
-        {/* Search, Filter, Sort Form */}
         <form method="GET" action="/" style={{ marginBottom: '2rem', display: 'flex', gap: '1rem' }}>
           <input name="q" defaultValue={q} placeholder="Search..." style={{ padding: '0.5rem' }} />
           <input type="hidden" name="categoryId" value={categoryId || ''} />
@@ -94,8 +80,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
           <button type="submit" style={{ padding: '0.5rem 1rem' }}>Apply</button>
         </form>
 
-        {/* BULK ASSIGNMENT FORM */}
-        <form action="/api/bulk-assign" method="POST">
+        {/* FIXED: Using Server Action instead of API route */}
+        <form action={bulkAssignCategory}>
           <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <select name="categoryId" required style={{ padding: '0.5rem' }}>
               <option value="">Select Category</option>
@@ -128,36 +114,19 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
         </form>
 
         {/* Pagination */}
-        {/* Pagination Section */}
         <div style={{ marginTop: '3rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center' }}>
-          <Link href={`/?q=${q}&page=${Math.max(1, currentPage - 1)}&limit=${currentLimit}${categoryId ? `&categoryId=${categoryId}` : ''}&sort=${sort}`}>
-            « Prev
-          </Link>
-
+          <Link href={`/?q=${q}&page=${Math.max(1, currentPage - 1)}&limit=${currentLimit}${categoryId ? `&categoryId=${categoryId}` : ''}&sort=${sort}`}>« Prev</Link>
           <span>Page {currentPage} of {totalPages}</span>
-
-          {/* Page Jump Input */}
           <form method="GET" action="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <input type="hidden" name="q" value={q} />
             <input type="hidden" name="limit" value={currentLimit} />
             <input type="hidden" name="categoryId" value={categoryId || ''} />
             <input type="hidden" name="sort" value={sort} />
-
             <label htmlFor="page">Jump to:</label>
-            <input
-              type="number"
-              name="page"
-              min="1"
-              max={totalPages}
-              defaultValue={currentPage}
-              style={{ width: '50px', padding: '0.2rem' }}
-            />
+            <input type="number" name="page" min="1" max={totalPages} defaultValue={currentPage} style={{ width: '50px', padding: '0.2rem' }} />
             <button type="submit" style={{ padding: '0.2rem 0.5rem' }}>Go</button>
           </form>
-
-          <Link href={`/?q=${q}&page=${Math.min(totalPages, currentPage + 1)}&limit=${currentLimit}${categoryId ? `&categoryId=${categoryId}` : ''}&sort=${sort}`}>
-            Next »
-          </Link>
+          <Link href={`/?q=${q}&page=${Math.min(totalPages, currentPage + 1)}&limit=${currentLimit}${categoryId ? `&categoryId=${categoryId}` : ''}&sort=${sort}`}>Next »</Link>
         </div>
       </div>
     </main>

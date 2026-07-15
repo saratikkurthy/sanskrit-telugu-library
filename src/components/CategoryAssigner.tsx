@@ -1,7 +1,6 @@
 'use client';
-import { assignCategoryAction } from '@/app/actions';
+import { assignCategoryAction, createCategory } from '@/app/actions';
 import { useState, useTransition } from 'react';
-import { createCategory } from '@/app/actions'; // Assuming this exists
 
 export default function CategoryAssigner({ fileId, currentCatId, categories }: {
   fileId: number,
@@ -13,15 +12,17 @@ export default function CategoryAssigner({ fileId, currentCatId, categories }: {
   const [isPending, startTransition] = useTransition();
 
   const handleSave = () => {
-    startTransition(() => assignCategoryAction(fileId, selectedCatId));
+    startTransition(async () => {
+      await assignCategoryAction(fileId, selectedCatId);
+    });
   };
 
   const handleCreate = async () => {
-    if (!newCatName) return;
+    if (!newCatName.trim()) return;
     await createCategory(newCatName);
-    setNewCatName(''); // Reset
-    // Note: You may need to trigger a page revalidation or 
-    // update local state here to refresh the dropdown list
+    setNewCatName(''); 
+    // Note: Since you are in a Client Component, refreshing the page or 
+    // using a router.refresh() here would update the dropdown list.
   };
 
   return (
@@ -29,19 +30,21 @@ export default function CategoryAssigner({ fileId, currentCatId, categories }: {
       {/* Assignment Section */}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
         <select
-          value={selectedCatId || ""}
+          value={selectedCatId ?? ""}
           onChange={(e) => setSelectedCatId(e.target.value ? parseInt(e.target.value) : null)}
           style={{ padding: '0.5rem', borderRadius: '4px' }}
         >
+          {/* This option effectively unassigns the category when saved */}
           <option value="">No Category</option>
           {categories?.map(cat => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
+        
         <button 
           onClick={handleSave} 
           disabled={isPending}
-          style={{ padding: '0.5rem 1rem', background: 'green', color: 'white' }}
+          style={{ padding: '0.5rem 1rem', background: 'green', color: 'white', cursor: 'pointer' }}
         >
           {isPending ? "Saving..." : "Save Assignment"}
         </button>
@@ -55,7 +58,7 @@ export default function CategoryAssigner({ fileId, currentCatId, categories }: {
           onChange={(e) => setNewCatName(e.target.value)}
           style={{ padding: '0.5rem', marginRight: '5px' }}
         />
-        <button onClick={handleCreate} style={{ padding: '0.5rem' }}>+ Quick Add</button>
+        <button onClick={handleCreate} style={{ padding: '0.5rem', cursor: 'pointer' }}>+ Quick Add</button>
       </div>
     </div>
   );
